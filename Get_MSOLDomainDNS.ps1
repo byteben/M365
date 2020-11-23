@@ -43,7 +43,7 @@ Connect-AzureAD -Credential $Credentials | Out-Null
 $Custom_MXRecord = 'Resolve-DNSName -Name $Domain.Name -Type MX -Server $DNSServer | Select-Object -ExpandProperty NameExchange'
 
 #Get Expected DNS Record for Verified Domain
-$MS_MXRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | ? {$_.RecordType -eq "MX"} | Select-Object -ExpandProperty MailExchange'
+$MS_MXRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object {$_.RecordType -eq "MX"} | Select-Object -ExpandProperty MailExchange'
 
 #Get a list of Verified Domains for the tenant
 Write-Host "Enumarting Verified Domains..."  -ForegroundColor Green
