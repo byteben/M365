@@ -85,6 +85,46 @@ Function Get_Custom_AutoDiscoverRecord {
     }
 }
 
+Function Get_Custom_SIPRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Build AutoDiscover Parameter
+    $SIPCNAME = "sip.$($Domain)"
+
+    #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $SIPCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
+        Resolve-DNSName -Name $SIPCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Stop
+    }
+    Catch {
+        Write-Host "Error getting SIP CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+    }
+}
+
+Function Get_Custom_LyncDiscoverRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Build AutoDiscover Parameter
+    $LyncDiscoverCNAME = "lyncdiscover.$($Domain)"
+
+    #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $LyncDiscoverCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
+        Resolve-DNSName -Name $LyncDiscoverCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Stop
+    }
+    Catch {
+        Write-Host "Error getting LyncDiscover CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+    }
+}
+
 $Credentials = Get-Credential
 
 #Import Modules - AzureADPreview can be substituted for AzureAD
@@ -115,6 +155,11 @@ else {
         Write-Host "--------------------------------------" -ForegroundColor Green
         Write-Host $Domain.Name -ForegroundColor Green
         Write-Host "--------------------------------------" -ForegroundColor Green
+
+        #Start Checking Records
+        Write-Host "--------------------------------------" -ForegroundColor White
+        Write-Host "Exchange Online Records" -ForegroundColor White
+        Write-Host "--------------------------------------" -ForegroundColor White
         
         #Check MX Record
         Write-Host "MX Record for Verfied Domain is:"
@@ -159,11 +204,45 @@ else {
         #Get Expected Autodiscover CNAME Record
         Write-Host "Expected Autodiscover CNAME Record for Verfied Domain is:"
         Try {
-            $MS_AutoDiscoverRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "Email") } | Select-Object -ExpandProperty Label -ErrorAction Stop
+            $MS_AutoDiscoverRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "Email") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
             Write-Host $MS_AutoDiscoverRecordResult -ForegroundColor Yellow
         } 
         Catch {
             Write-Host "Could not verify expected AutoDiscover CNAME Record for $($Domain.Name)" -ForegroundColor Red
+        }
+
+        Write-Host "--------------------------------------" -ForegroundColor White
+        Write-Host "Skype for Business Records" -ForegroundColor White
+        Write-Host "--------------------------------------" -ForegroundColor White
+
+        #Check SIP CNAME Record
+        Write-Host "SIP CNAME Record for Verfied Domain is:"
+        $Custom_SIPRecordResult = Get_Custom_SIPRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_SIPRecordResult -ForegroundColor Yellow
+        
+        #Get Expected SIP CNAME Record
+        Write-Host "Expected SIP CNAME Record for Verfied Domain is:"
+        Try {
+            $MS_SIPRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "*sip*") -and ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "OfficeCommunicationsOnline") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
+            Write-Host $MS_SIPRecordResult -ForegroundColor Yellow
+        } 
+        Catch {
+            Write-Host "Could not verify expected SIP CNAME Record for $($Domain.Name)" -ForegroundColor Red
+        }
+
+        #Check LyncDiscover CNAME Record
+        Write-Host "LyncDiscover CNAME Record for Verfied Domain is:"
+        $Custom_LyncDiscoverRecordResult = Get_Custom_LyncDiscoverRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_LyncDiscoverRecordResult -ForegroundColor Yellow
+        
+        #Get Expected LyncDiscover CNAME Record
+        Write-Host "Expected LyncDiscover CNAME Record for Verfied Domain is:"
+        Try {
+            $MS_LyncDiscoverRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "*lyncdiscover*") -and ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "OfficeCommunicationsOnline") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
+            Write-Host $MS_LyncDiscoverRecordResult -ForegroundColor Yellow
+        } 
+        Catch {
+            Write-Host "Could not verify expected LyncDiscover CNAME Record for $($Domain.Name)" -ForegroundColor Red
         }
     }
 }
