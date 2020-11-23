@@ -28,8 +28,13 @@ Param (
 #Get User credentials
 $UserCredential = Get-Credential
 
-#Connect to a remote PowerShell session
-$Session = Connect-AzureAD -Credential $UserCredential 
+#Connect to AzureAD
+Write-Output "Connecting to Azure AD"
+Connect-AzureAD -Credential $UserCredential
+
+#Connect to MSOL Service
+Write-Output "Connecting to MsolService"
+Connect-MsolService -Credential $UserCredential
 
 #Resolve DNS Name for existing MX Record on Verified Domain
 $Custom_MXRecord = 'Resolve-DNSName -Name $Domain.Name -Type MX -Server $DNSServer | Select-Object -ExpandProperty NameExchange'
