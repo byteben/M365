@@ -33,10 +33,6 @@ Param (
 Import-Module AzureAD
 Import-Module MSOnline
 
-#Connect to AzureAD
-Write-Output "Connecting to Azure AD"
-Connect-AzureAD
-
 #Connect to MSOL Service
 Write-Output "Connecting to MsolService"
 Connect-MsolService
