@@ -29,6 +29,59 @@ Param (
     [String]$DNSServer = "8.8.8.8"
 )
 
+Function Get_Custom_MXRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Resolve DNS Name for existing MX Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $Domain -Type MX -Server $DNSServer -Erroraction Stop | Out-Null
+        Resolve-DNSName -Name $Domain -Type MX -Server $DNSServer | Select-Object -ExpandProperty NameExchange -Erroraction Stop
+    }
+    Catch {
+        Write-Host "Error getting MX Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+    }
+}
+
+Function Get_Custom_TXTRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Resolve DNS Name for existing TXT Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $Domain -Type TXT -Server $DNSServer -ErrorAction Stop | Out-Null
+        Resolve-DNSName -Name $Domain -Type TXT -Server $DNSServer | Where-Object { $_.Strings -like "v=spf*" } | Select-Object -ExpandProperty Strings -ErrorAction Stop
+    }
+    Catch {
+        Write-Host "Error getting TXT Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+    }
+}
+Function Get_Custom_AutoDiscoverRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Build AutoDiscover Parameter
+    $AutoDiscoverCNAME = "autodiscover.$($Domain)"
+
+    #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $AutoDiscoverCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
+        Resolve-DNSName -Name $AutoDiscoverCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME"} | Select-Object -ExpandProperty NameHost -ErrorAction Stop
+    }
+    Catch {
+        Write-Host "Error getting Autodiscover CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+    }
+}
+
 $Credentials = Get-Credential
 
 #Import Modules - AzureADPreview can be substituted for AzureAD
@@ -38,16 +91,6 @@ Import-Module MSOnline
 #Connect to Services
 Connect-MsolService -Credential $Credentials | Out-Null
 Connect-AzureAD -Credential $Credentials | Out-Null
-
-#Resolve DNS Name for existing MX Record on Verified Domain
-$Custom_MXRecord = 'Resolve-DNSName -Name $Domain.Name -Type MX -Server $DNSServer | Select-Object -ExpandProperty NameExchange'
-
-$Custom_TXTRecord = 'Resolve-DNSName -Name $Domain.Name -Type TXT -Server $DNSServer | Where-Object {$_.Strings -like "v=spf*"}| Select-Object -ExpandProperty Strings'
-
-#Get Expected DNS Record for Verified Domain
-$MS_MXRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object {$_.RecordType -eq "MX"} | Select-Object -ExpandProperty MailExchange'
-
-$MS_TXTRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object {$_.RecordType -eq "TXT"} | Select-Object -ExpandProperty Text'
 
 #Get a list of Verified Domains for the tenant
 Write-Host "Enumerating Verified Domains..."  -ForegroundColor Green
@@ -72,28 +115,23 @@ else {
         
         #Check MX Record
         Write-Host "MX Record for Verfied Domain is:"
-        Try {
-            $Custom_MXRecordResult = Invoke-Expression $Custom_MXRecord -ErrorAction Continue
-            Write-Host $Custom_MXRecordResult -ForegroundColor Yellow
-        } 
-        Catch {
-            Write-Host "Could not verify MX Record for $($Domain.Name)" -ForegroundColor Red
-        }
+        $Custom_MXRecordResult = Get_Custom_MXRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_MXRecordResult -ForegroundColor Yellow
         
         #Get Expected MX Record
         Write-Host "Expected MX Record for Verfied Domain is:"
         Try {
-            $MS_MXRecordResult = Invoke-Expression $MS_MXRecord -ErrorAction Continue
+            $MS_MXRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { $_.RecordType -eq "MX" } | Select-Object -ExpandProperty MailExchange -ErrorAction Stop
             Write-Host $MS_MXRecordResult -ForegroundColor Yellow
         } 
         Catch {
-            Write-Host "Could not verify expected MX Record for $($Domain.Name)" -ForegroundColor Red | Out-Host
+            Write-Host "Could not verify expected MX Record for $($Domain.Name)" -ForegroundColor Red
         }
-        
+
         #Check TXT Record
         Write-Host "TXT Record for Verfied Domain is:"
         Try {
-            $Custom_TXTRecordResult = Invoke-Expression $Custom_TXTRecord -ErrorAction Continue
+            $Custom_TXTRecordResult = Get_Custom_TXTRecord -Domain $Domain.Name -DNSServer $DNSServer
             Write-Host $Custom_TXTRecordResult -ForegroundColor Yellow
         } 
         Catch {
@@ -103,14 +141,28 @@ else {
         #Get Expected TXT Record
         Write-Host "Expected TXT Record for Verfied Domain is:"
         Try {
-            $MS_TXTRecordResult = Invoke-Expression $MS_TXTRecord -ErrorAction Continue
+            $MS_TXTRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { $_.RecordType -eq "TXT" } | Select-Object -ExpandProperty Text -ErrorAction Stop
             Write-Host $MS_TXTRecordResult -ForegroundColor Yellow
         } 
         Catch {
-            Write-Host "Could not verify expected TXT Record for $($Domain.Name)" -ForegroundColor Red | Out-Host
+            Write-Host "Could not verify expected TXT Record for $($Domain.Name)" -ForegroundColor Red
         }
         
+        #Check Autodiscover CNAME Record
+        Write-Host "Autodiscover CNAME Record for Verfied Domain is:"
+        $Custom_AutoDiscoverRecordResult = Get_Custom_AutoDiscoverRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_AutoDiscoverRecordResult -ForegroundColor Yellow
+        
+        #Get Expected Autodiscover CNAME Record
+        Write-Host "Expected Autodiscover CNAME Record for Verfied Domain is:"
+        Try {
+            $MS_AutoDiscoverRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "Email") } | Select-Object -ExpandProperty Label -ErrorAction Stop
+            Write-Host $MS_AutoDiscoverRecordResult -ForegroundColor Yellow
+        } 
+        Catch {
+            Write-Host "Could not verify expected AutoDiscover CNAME Record for $($Domain.Name)" -ForegroundColor Red
+        }
     }
 }
 #Disconect remote PowerShell session
-Disconnect-AzureAD -Confirm:$False
+#Disconnect-AzureAD -Confirm:$False
