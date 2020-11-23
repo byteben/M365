@@ -13,7 +13,7 @@ Initial Release
 Script to check if the actual DNS records for verified domains are the expected DNS records
 Requires the following PowerShell Modules:-
 
-Install-Module -Name AzureAD
+Install-Module -Name AzureAD / AzureADPreview
 Install-Module -Name MSOnline
 
 .EXAMPLE
@@ -31,8 +31,8 @@ Param (
 
 $Credentials = Get-Credential
 
-#Import Modules
-Import-Module AzureAD
+#Import Modules - AzureADPreview can be substituted for AzureAD
+Import-Module AzureADPreview
 Import-Module MSOnline
 
 #Connect to Services
@@ -42,8 +42,12 @@ Connect-AzureAD -Credential $Credentials | Out-Null
 #Resolve DNS Name for existing MX Record on Verified Domain
 $Custom_MXRecord = 'Resolve-DNSName -Name $Domain.Name -Type MX -Server $DNSServer | Select-Object -ExpandProperty NameExchange'
 
+$Custom_TXTRecord = 'Resolve-DNSName -Name $Domain.Name -Type TXT -Server $DNSServer | Where-Object {$_.Strings -like "v=spf*"}| Select-Object -ExpandProperty Strings'
+
 #Get Expected DNS Record for Verified Domain
 $MS_MXRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object {$_.RecordType -eq "MX"} | Select-Object -ExpandProperty MailExchange'
+
+$MS_TXTRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object {$_.RecordType -eq "TXT"} | Select-Object -ExpandProperty Text'
 
 #Get a list of Verified Domains for the tenant
 Write-Host "Enumarting Verified Domains..."  -ForegroundColor Green
@@ -62,8 +66,10 @@ else {
     Write-Host "Checking DNS Records for selected Domains..." -ForegroundColor Green
 
     Foreach ($Domain in $VerifiedDomains) {
+        Write-Host "--------------------------------------" -ForegroundColor Green
         Write-Host $Domain.Name -ForegroundColor Green
-
+        Write-Host "--------------------------------------" -ForegroundColor Green
+        
         #Check MX Record
         Write-Host "MX Record for Verfied Domain is:"
         Try {
@@ -83,6 +89,27 @@ else {
         Catch {
             Write-Host "Could not verify expected MX Record for $($Domain.Name)" -ForegroundColor Red | Out-Host
         }
+        
+        #Check TXT Record
+        Write-Host "TXT Record for Verfied Domain is:"
+        Try {
+            $Custom_TXTRecordResult = Invoke-Expression $Custom_TXTRecord -ErrorAction Continue
+            Write-Host $Custom_TXTRecordResult -ForegroundColor Yellow
+        } 
+        Catch {
+            Write-Host "Could not verify TXT Record for $($Domain.Name)" -ForegroundColor Red
+        }
+        
+        #Get Expected TXT Record
+        Write-Host "Expected TXT Record for Verfied Domain is:"
+        Try {
+            $MS_TXTRecordResult = Invoke-Expression $MS_TXTRecord -ErrorAction Continue
+            Write-Host $MS_TXTRecordResult -ForegroundColor Yellow
+        } 
+        Catch {
+            Write-Host "Could not verify expected TXT Record for $($Domain.Name)" -ForegroundColor Red | Out-Host
+        }
+        
     }
 }
 #Disconect remote PowerShell session
