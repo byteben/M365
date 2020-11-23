@@ -11,6 +11,10 @@ Initial Release
 
 .DESCRIPTION
 Script to check if the actual DNS records for verified domains are the expected DNS records
+Requires the following PowerShell Modules:-
+
+Install-Module -Name AzureAD
+Install-Module -Name MSOnline
 
 .EXAMPLE
 Get_MSOLDomainDNS.ps1 -DNSServer "8.8.8.8"
@@ -24,6 +28,10 @@ Param (
     [Parameter(Mandatory = $False)]
     [String]$DNSServer = "8.8.8.8"
 )
+
+#Import Modules
+Import-Module AzureAD
+Import-Module MSOnline
 
 #Get User credentials
 $UserCredential = Get-Credential
