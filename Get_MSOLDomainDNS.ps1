@@ -1,0 +1,1 @@
+Get-MsolDomain | Where-Object {$_.Status -eq "Verified"} | Select-Object Name | Out-GridView
