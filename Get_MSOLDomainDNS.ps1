@@ -6,6 +6,9 @@ Organization: 	byteben.com
 Filename:     	Get_MSOLDomainDNS.ps1
 ===========================================================================
 
+1.202311.02   23/11/2020  Ben Whitmore @byteben.com
+Added 3 Functions to query existing DNS Records and Catch any errors
+
 1.202311.01   23/11/2020  Ben Whitmore @byteben.com
 Initial Release
 
