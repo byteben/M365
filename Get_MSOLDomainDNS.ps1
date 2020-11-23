@@ -50,7 +50,7 @@ $MS_MXRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name |
 $MS_TXTRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object {$_.RecordType -eq "TXT"} | Select-Object -ExpandProperty Text'
 
 #Get a list of Verified Domains for the tenant
-Write-Host "Enumarting Verified Domains..."  -ForegroundColor Green
+Write-Host "Enumerating Verified Domains..."  -ForegroundColor Green
 $VerifiedDomains = Get-MsolDomain | Where-Object { ($_.Status -eq 'Verified') -and (!($_.Name -like "*onmicrosoft.com")) } | Sort-Object Name | Out-GridView -Title 'Choose a Verfied Domain(s):' -PassThru
 
 If ($VerifiedDomains -eq $Null) {
