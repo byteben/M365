@@ -29,13 +29,15 @@ Param (
     [String]$DNSServer = "8.8.8.8"
 )
 
+$Credentials = Get-Credential
+
 #Import Modules
 Import-Module AzureAD
 Import-Module MSOnline
 
-#Connect to MSOL Service
-Write-Output "Connecting to MsolService"
-Connect-MsolService
+#Connect to Services
+Connect-MsolService -Credential $Credentials | Out-Null
+Connect-AzureAD -Credential $Credentials | Out-Null
 
 #Resolve DNS Name for existing MX Record on Verified Domain
 $Custom_MXRecord = 'Resolve-DNSName -Name $Domain.Name -Type MX -Server $DNSServer | Select-Object -ExpandProperty NameExchange'
@@ -44,6 +46,7 @@ $Custom_MXRecord = 'Resolve-DNSName -Name $Domain.Name -Type MX -Server $DNSServ
 $MS_MXRecord = 'Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | ? {$_.RecordType -eq "MX"} | Select-Object -ExpandProperty MailExchange'
 
 #Get a list of Verified Domains for the tenant
+Write-Host "Enumarting Verified Domains..."  -ForegroundColor Green
 $VerifiedDomains = Get-MsolDomain | Where-Object { ($_.Status -eq 'Verified') -and (!($_.Name -like "*onmicrosoft.com")) } | Sort-Object Name | Out-GridView -Title 'Choose a Verfied Domain(s):' -PassThru
 
 If ($VerifiedDomains -eq $Null) {
@@ -53,7 +56,7 @@ If ($VerifiedDomains -eq $Null) {
 else {
     Write-Host "The following Verified Domains were selected:" -ForegroundColor Green
     Foreach ($Domain in $VerifiedDomains) {
-        Write-Host $Domain.Name
+        Write-Host $Domain.Name | Out-Host
     }
 
     Write-Host "Checking DNS Records for selected Domains..." -ForegroundColor Green
@@ -78,7 +81,7 @@ else {
             Write-Host $MS_MXRecordResult -ForegroundColor Yellow
         } 
         Catch {
-            Write-Host "Could not verify expected MX Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify expected MX Record for $($Domain.Name)" -ForegroundColor Red | Out-Host
         }
     }
 }
