@@ -125,6 +125,27 @@ Function Get_Custom_LyncDiscoverRecord {
     }
 }
 
+Function Get_Custom_SIPTLSRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Build AutoDiscover Parameter
+    $SIPTLSSRV = "_sip._tls.$($Domain)"
+
+    #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $SIPTLSSRV -Type SRV -Server $DNSServer -ErrorAction Stop | Out-Null
+        Resolve-DNSName -Name $SIPTLSSRV -Type SRV -Server $DNSServer | Where-Object { $_.Type -eq "SRV" } | Select-Object Name, Port, Priority, Weight -ErrorAction Stop
+    }
+    Catch {
+        Write-Host "Error getting SIP TLS SRV Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+    }
+}
+
+
 $Credentials = Get-Credential
 
 #Import Modules - AzureADPreview can be substituted for AzureAD
@@ -243,6 +264,21 @@ else {
         } 
         Catch {
             Write-Host "Could not verify expected LyncDiscover CNAME Record for $($Domain.Name)" -ForegroundColor Red
+        }
+
+        #Check SIP TLS SRV Record
+        Write-Host "SIP TLS SRV Record for Verfied Domain is:"
+        $Custom_SIPTLSRecordResult = Get_Custom_SIPTLSRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_SIPTLSRecordResult -ForegroundColor Yellow
+        
+        #Get Expected SIP TLS SRV Record
+        Write-Host "Expected SIP TLS SRV Record for Verfied Domain is:"
+        Try {
+            $MS_SIPTLSRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "_sip._tls*") -and ($_.RecordType -eq "SRV") -and ($_.SupportedService -eq "OfficeCommunicationsOnline") } | Select-Object NameTarget, Port, Priority, Protocol, Service, Weight -ErrorAction Stop
+            Write-Host $MS_SIPTLSRecordResult -ForegroundColor Yellow
+        } 
+        Catch {
+            Write-Host "Could not verify expected SIP TLS SRV Record for $($Domain.Name)" -ForegroundColor Red
         }
     }
 }
