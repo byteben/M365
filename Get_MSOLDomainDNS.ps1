@@ -224,7 +224,8 @@ $ErrorColor = "Red"
 $Credentials = Get-Credential
 
 #Import Modules - AzureADPreview can be substituted for AzureAD
-Import-Module AzureADPreview
+Import-Module AzureAD
+#Import-Module AzureADPreview
 Import-Module MSOnline
 
 #Connect to Services
@@ -408,4 +409,4 @@ else {
     }
 }
 #Disconect remote PowerShell session
-#Disconnect-AzureAD -Confirm:$False
+Disconnect-AzureAD -Confirm:$False
