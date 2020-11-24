@@ -45,7 +45,7 @@ Function Get_Custom_MXRecord {
         Resolve-DNSName -Name $Domain -Type MX -Server $DNSServer | Select-Object -ExpandProperty NameExchange -Erroraction Stop
     }
     Catch {
-        Write-Host "Error getting MX Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+        Write-Host "Error getting MX Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
     }
 }
 
@@ -62,7 +62,7 @@ Function Get_Custom_TXTRecord {
         Resolve-DNSName -Name $Domain -Type TXT -Server $DNSServer | Where-Object { $_.Strings -like "v=spf*" } | Select-Object -ExpandProperty Strings -ErrorAction Stop
     }
     Catch {
-        Write-Host "Error getting TXT Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+        Write-Host "Error getting TXT Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
     }
 }
 Function Get_Custom_AutoDiscoverRecord {
@@ -72,16 +72,18 @@ Function Get_Custom_AutoDiscoverRecord {
         [String]$DNSServer
     )
 
-    #Build AutoDiscover Parameter
+    #Build Record Parameter
     $AutoDiscoverCNAME = "autodiscover.$($Domain)"
 
     #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
     Try {
         Resolve-DNSName -Name $AutoDiscoverCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
-        Resolve-DNSName -Name $AutoDiscoverCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME"} | Select-Object -ExpandProperty NameHost -ErrorAction Stop
+        $Record = Resolve-DNSName -Name $AutoDiscoverCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Continue 
+        If ($Record -eq $Null) { $Record = "Missing: Record Not Found" }
+        $Record
     }
     Catch {
-        Write-Host "Error getting Autodiscover CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+        Write-Host "Error getting Autodiscover CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
     }
 }
 
@@ -92,16 +94,18 @@ Function Get_Custom_SIPRecord {
         [String]$DNSServer
     )
 
-    #Build AutoDiscover Parameter
+    #Build Record Parameter
     $SIPCNAME = "sip.$($Domain)"
 
-    #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
+    #Resolve DNS Name for existing SIP CNAME Record on Verified Domain
     Try {
         Resolve-DNSName -Name $SIPCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
-        Resolve-DNSName -Name $SIPCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Stop
+        $Record = Resolve-DNSName -Name $SIPCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Continue 
+        If ($Record -eq $Null) { $Record = "Missing: Record Not Found" }
+        $Record
     }
     Catch {
-        Write-Host "Error getting SIP CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+        Write-Host "Error getting SIP CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
     }
 }
 
@@ -112,16 +116,18 @@ Function Get_Custom_LyncDiscoverRecord {
         [String]$DNSServer
     )
 
-    #Build AutoDiscover Parameter
+    #Build Record Parameter
     $LyncDiscoverCNAME = "lyncdiscover.$($Domain)"
 
     #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
     Try {
         Resolve-DNSName -Name $LyncDiscoverCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
-        Resolve-DNSName -Name $LyncDiscoverCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Stop
+        $Record = Resolve-DNSName -Name $LyncDiscoverCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Continue 
+        If ($Record -eq $Null) { $Record = "Missing: Record Not Found" }
+        $Record
     }
     Catch {
-        Write-Host "Error getting LyncDiscover CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+        Write-Host "Error getting LyncDiscover CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
     }
 }
 
@@ -132,20 +138,89 @@ Function Get_Custom_SIPTLSRecord {
         [String]$DNSServer
     )
 
-    #Build AutoDiscover Parameter
+    #Build Record Parameter
     $SIPTLSSRV = "_sip._tls.$($Domain)"
 
-    #Resolve DNS Name for existing AutoDiscover CNAME Record on Verified Domain
+    #Resolve DNS Name for existing SIP TLS Record on Verified Domain
     Try {
         Resolve-DNSName -Name $SIPTLSSRV -Type SRV -Server $DNSServer -ErrorAction Stop | Out-Null
         Resolve-DNSName -Name $SIPTLSSRV -Type SRV -Server $DNSServer | Where-Object { $_.Type -eq "SRV" } | Select-Object Name, Port, Priority, Weight -ErrorAction Stop
     }
     Catch {
-        Write-Host "Error getting SIP TLS SRV Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor Red
+        Write-Host "Error getting SIP TLS SRV Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
     }
 }
 
+Function Get_Custom_SIPFederationTLSRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
 
+    #Build Record Parameter
+    $SIPFederationTLSSRV = "_sipfederationtls._tcp.$($Domain)"
+
+    #Resolve DNS Name for existing SIP Federation TLS Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $SIPFederationTLSSRV -Type SRV -Server $DNSServer -ErrorAction Stop | Out-Null
+        Resolve-DNSName -Name $SIPFederationTLSSRV -Type SRV -Server $DNSServer | Where-Object { $_.Type -eq "SRV" } | Select-Object Name, Port, Priority, Weight -ErrorAction Stop
+    }
+    Catch {
+        Write-Host "Error getting SIP Federation TLS SRV Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
+    }
+}
+
+Function Get_Custom_EnterpriseRegistrationRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Build Record Parameter
+    $EnterpriseRegistrationCNAME = "enterpriseregistration.$($Domain)"
+
+    #Resolve DNS Name for existing Enterprise Registration CNAME Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $EnterpriseRegistrationCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
+        $Record = Resolve-DNSName -Name $EnterpriseRegistrationCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Continue 
+        If ($Record -eq $Null) { $Record = "Missing: Record Not Found" }
+        $Record
+    }
+    Catch {
+        Write-Host "Error getting Enterprise Registration CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
+    }
+}
+
+Function Get_Custom_EnterpriseEnrollmentRecord {
+    Param (
+        [Parameter(Mandatory = $True)]
+        [String]$Domain,
+        [String]$DNSServer
+    )
+
+    #Build Record Parameter
+    $EnterpriseEnrollmentCNAME = "enterpriseenrollment.$($Domain)"
+
+    #Resolve DNS Name for existing Enterprise Enrollment CNAME Record on Verified Domain
+    Try {
+        Resolve-DNSName -Name $EnterpriseEnrollmentCNAME -Type CNAME -Server $DNSServer -ErrorAction Stop | Out-Null
+        $Record = Resolve-DNSName -Name $EnterpriseEnrollmentCNAME -Type CNAME -Server $DNSServer | Where-Object { $_.Type -eq "CNAME" } | Select-Object -ExpandProperty NameHost -ErrorAction Continue 
+        If ($Record -eq $Null) { $Record = "Missing: Record Not Found" }
+        $Record
+    }
+    Catch {
+        Write-Host "Error getting Enterprise Enrollment CNAME Record for $Domain. Error: $($Error[0].Exception.Message)" -ForegroundColor $ErrorColor
+    }
+}
+
+#Set Colour Preference
+$CustomRecordColor = "Cyan"
+$MSRecordColor = "Yellow"
+$ErrorColor = "Red"
+
+#Get Credentials to perform connection to MSOnline and AzureAD
 $Credentials = Get-Credential
 
 #Import Modules - AzureADPreview can be substituted for AzureAD
@@ -161,7 +236,7 @@ Write-Host "Enumerating Verified Domains..."  -ForegroundColor Green
 $VerifiedDomains = Get-MsolDomain | Where-Object { ($_.Status -eq 'Verified') -and (!($_.Name -like "*onmicrosoft.com")) } | Sort-Object Name | Out-GridView -Title 'Choose a Verfied Domain(s):' -PassThru
 
 If ($VerifiedDomains -eq $Null) {
-    Write-Host "No Verified Domains were selected or the operation was cancelled by the user" -ForegroundColor Red
+    Write-Host "No Verified Domains were selected or the operation was cancelled by the user" -ForegroundColor $ErrorColor
     Exit 1
 }
 else {
@@ -185,51 +260,51 @@ else {
         #Check MX Record
         Write-Host "MX Record for Verfied Domain is:"
         $Custom_MXRecordResult = Get_Custom_MXRecord -Domain $Domain.Name -DNSServer $DNSServer
-        Write-Host $Custom_MXRecordResult -ForegroundColor Yellow
-        
+        Write-Host $Custom_MXRecordResult -ForegroundColor $CustomRecordColor
+
         #Get Expected MX Record
         Write-Host "Expected MX Record for Verfied Domain is:"
         Try {
             $MS_MXRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { $_.RecordType -eq "MX" } | Select-Object -ExpandProperty MailExchange -ErrorAction Stop
-            Write-Host $MS_MXRecordResult -ForegroundColor Yellow
+            Write-Host $MS_MXRecordResult -ForegroundColor $MSRecordColor
         } 
         Catch {
-            Write-Host "Could not verify expected MX Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify expected MX Record for $($Domain.Name)" -ForegroundColor $ErrorColor
         }
 
         #Check TXT Record
         Write-Host "TXT Record for Verfied Domain is:"
         Try {
             $Custom_TXTRecordResult = Get_Custom_TXTRecord -Domain $Domain.Name -DNSServer $DNSServer
-            Write-Host $Custom_TXTRecordResult -ForegroundColor Yellow
+            Write-Host $Custom_TXTRecordResult -ForegroundColor $CustomRecordColor
         } 
         Catch {
-            Write-Host "Could not verify TXT Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify TXT Record for $($Domain.Name)" -ForegroundColor $ErrorColor
         }
         
         #Get Expected TXT Record
         Write-Host "Expected TXT Record for Verfied Domain is:"
         Try {
             $MS_TXTRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { $_.RecordType -eq "TXT" } | Select-Object -ExpandProperty Text -ErrorAction Stop
-            Write-Host $MS_TXTRecordResult -ForegroundColor Yellow
+            Write-Host $MS_TXTRecordResult -ForegroundColor $MSRecordColor
         } 
         Catch {
-            Write-Host "Could not verify expected TXT Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify expected TXT Record for $($Domain.Name)" -ForegroundColor $ErrorColor
         }
         
         #Check Autodiscover CNAME Record
         Write-Host "Autodiscover CNAME Record for Verfied Domain is:"
         $Custom_AutoDiscoverRecordResult = Get_Custom_AutoDiscoverRecord -Domain $Domain.Name -DNSServer $DNSServer
-        Write-Host $Custom_AutoDiscoverRecordResult -ForegroundColor Yellow
+        Write-Host $Custom_AutoDiscoverRecordResult -ForegroundColor $CustomRecordColor
         
         #Get Expected Autodiscover CNAME Record
         Write-Host "Expected Autodiscover CNAME Record for Verfied Domain is:"
         Try {
             $MS_AutoDiscoverRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "Email") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
-            Write-Host $MS_AutoDiscoverRecordResult -ForegroundColor Yellow
+            Write-Host $MS_AutoDiscoverRecordResult -ForegroundColor $MSRecordColor
         } 
         Catch {
-            Write-Host "Could not verify expected AutoDiscover CNAME Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify expected AutoDiscover CNAME Record for $($Domain.Name)" -ForegroundColor $ErrorColor
         }
 
         Write-Host "--------------------------------------" -ForegroundColor White
@@ -239,46 +314,96 @@ else {
         #Check SIP CNAME Record
         Write-Host "SIP CNAME Record for Verfied Domain is:"
         $Custom_SIPRecordResult = Get_Custom_SIPRecord -Domain $Domain.Name -DNSServer $DNSServer
-        Write-Host $Custom_SIPRecordResult -ForegroundColor Yellow
+        Write-Host $Custom_SIPRecordResult -ForegroundColor $CustomRecordColor
         
         #Get Expected SIP CNAME Record
         Write-Host "Expected SIP CNAME Record for Verfied Domain is:"
         Try {
             $MS_SIPRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "*sip*") -and ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "OfficeCommunicationsOnline") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
-            Write-Host $MS_SIPRecordResult -ForegroundColor Yellow
+            Write-Host $MS_SIPRecordResult -ForegroundColor $MSRecordColor
         } 
         Catch {
-            Write-Host "Could not verify expected SIP CNAME Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify expected SIP CNAME Record for $($Domain.Name)" -ForegroundColor $ErrorColor
         }
 
         #Check LyncDiscover CNAME Record
         Write-Host "LyncDiscover CNAME Record for Verfied Domain is:"
         $Custom_LyncDiscoverRecordResult = Get_Custom_LyncDiscoverRecord -Domain $Domain.Name -DNSServer $DNSServer
-        Write-Host $Custom_LyncDiscoverRecordResult -ForegroundColor Yellow
+        Write-Host $Custom_LyncDiscoverRecordResult -ForegroundColor $CustomRecordColor
         
         #Get Expected LyncDiscover CNAME Record
         Write-Host "Expected LyncDiscover CNAME Record for Verfied Domain is:"
         Try {
             $MS_LyncDiscoverRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "*lyncdiscover*") -and ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "OfficeCommunicationsOnline") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
-            Write-Host $MS_LyncDiscoverRecordResult -ForegroundColor Yellow
+            Write-Host $MS_LyncDiscoverRecordResult -ForegroundColor $MSRecordColor
         } 
         Catch {
-            Write-Host "Could not verify expected LyncDiscover CNAME Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify expected LyncDiscover CNAME Record for $($Domain.Name)" -ForegroundColor $ErrorColor
         }
 
         #Check SIP TLS SRV Record
         Write-Host "SIP TLS SRV Record for Verfied Domain is:"
         $Custom_SIPTLSRecordResult = Get_Custom_SIPTLSRecord -Domain $Domain.Name -DNSServer $DNSServer
-        Write-Host $Custom_SIPTLSRecordResult -ForegroundColor Yellow
+        Write-Host $Custom_SIPTLSRecordResult -ForegroundColor $CustomRecordColor
         
         #Get Expected SIP TLS SRV Record
         Write-Host "Expected SIP TLS SRV Record for Verfied Domain is:"
         Try {
             $MS_SIPTLSRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "_sip._tls*") -and ($_.RecordType -eq "SRV") -and ($_.SupportedService -eq "OfficeCommunicationsOnline") } | Select-Object NameTarget, Port, Priority, Protocol, Service, Weight -ErrorAction Stop
-            Write-Host $MS_SIPTLSRecordResult -ForegroundColor Yellow
+            Write-Host $MS_SIPTLSRecordResult -ForegroundColor $MSRecordColor
         } 
         Catch {
-            Write-Host "Could not verify expected SIP TLS SRV Record for $($Domain.Name)" -ForegroundColor Red
+            Write-Host "Could not verify expected SIP TLS SRV Record for $($Domain.Name)" -ForegroundColor $ErrorColor
+        }
+
+        #Check SIP Federation TLS SRV Record
+        Write-Host "SIP TLS SRV Record for Verfied Domain is:"
+        $Custom_SIPFederationTLSRecordResult = Get_Custom_SIPFederationTLSRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_SIPFederationTLSRecordResult -ForegroundColor $CustomRecordColor
+        
+        #Get Expected SIP Federation TLS SRV Record
+        Write-Host "Expected SIP Federation TLS SRV Record for Verfied Domain is:"
+        Try {
+            $MS_SIPFederationTLSRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "_sipFederationtls*") -and ($_.RecordType -eq "SRV") -and ($_.SupportedService -eq "OfficeCommunicationsOnline") } | Select-Object NameTarget, Port, Priority, Protocol, Service, Weight -ErrorAction Stop
+            Write-Host $MS_SIPFederationTLSRecordResult -ForegroundColor $MSRecordColor
+        } 
+        Catch {
+            Write-Host "Could not verify expected SIP Federation TLS SRV Record for $($Domain.Name)" -ForegroundColor $ErrorColor
+        }
+
+        #Start Checking Records
+        Write-Host "--------------------------------------" -ForegroundColor White
+        Write-Host "Basic Mobility & Security Records" -ForegroundColor White
+        Write-Host "--------------------------------------" -ForegroundColor White
+        
+        #Check Enterprise Registration Record
+        Write-Host "Enterprise Registration Record for Verfied Domain is:"
+        $Custom_EnterpriseRegistrationRecordResult = Get_Custom_EnterpriseRegistrationRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_EnterpriseRegistrationRecordResult -ForegroundColor $CustomRecordColor
+
+        #Get Expected Enterprise Registration Record
+        Write-Host "Expected Enterprise Registration Record for Verfied Domain is:"
+        Try {
+            $MS_EnterpriseRegistrationRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "enterpriseregistration*") -and ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "Intune") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
+            Write-Host $MS_EnterpriseRegistrationRecordResult -ForegroundColor $MSRecordColor
+        } 
+        Catch {
+            Write-Host "Could not verify expected Enterprise Registration Record for $($Domain.Name)" -ForegroundColor $ErrorColor
+        }
+
+        #Check Enterprise Enrollment Record
+        Write-Host "Enterprise Enrollment Record for Verfied Domain is:"
+        $Custom_EnterpriseEnrollmentRecordResult = Get_Custom_EnterpriseEnrollmentRecord -Domain $Domain.Name -DNSServer $DNSServer
+        Write-Host $Custom_EnterpriseEnrollmentRecordResult -ForegroundColor $CustomRecordColor
+
+        #Get Expected Enterprise Enrollment Record
+        Write-Host "Expected Enterprise Enrollment Record for Verfied Domain is:"
+        Try {
+            $MS_EnterpriseEnrollmentRecordResult = Get-AzureADDomainServiceConfigurationRecord -Name $Domain.Name | Where-Object { ($_.Label -like "enterpriseenrollment*") -and ($_.RecordType -eq "CNAME") -and ($_.SupportedService -eq "Intune") } | Select-Object -ExpandProperty CanonicalName -ErrorAction Stop
+            Write-Host $MS_EnterpriseEnrollmentRecordResult -ForegroundColor $MSRecordColor
+        } 
+        Catch {
+            Write-Host "Could not verify expected Enterprise Enrollment Record for $($Domain.Name)" -ForegroundColor $ErrorColor
         }
     }
 }
