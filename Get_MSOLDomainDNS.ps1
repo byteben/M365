@@ -221,7 +221,7 @@ $MSRecordColor = "Yellow"
 $ErrorColor = "Red"
 
 #Get Credentials to perform connection to MSOnline and AzureAD
-$Credentials = Get-Credential
+#$Credentials = Get-Credential
 
 #Import Modules - AzureADPreview can be substituted for AzureAD
 Import-Module AzureAD
