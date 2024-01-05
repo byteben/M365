@@ -407,4 +407,4 @@ else {
     }
 }
 #Disconect Graph SDK session
-#Disconnect-MgGraph
+Disconnect-MgGraph
